@@ -19,12 +19,27 @@ spec:
         app: {{ template "shaarli.name" . }}
         release: {{ .Release.Name }}
     spec:
+      {{- with .Values.populate }}
+      initContainers:
+        - name: populate
+          image: "{{ .image.repository }}:{{ .image.tag }}"
+          imagePullPolicy: {{ .image.pullPolicy }}
+          args:
+          - sh
+          - /opt/scripts/populate.sh
+          {{- if .material.enabled }}
+          - /opt/scripts/material.sh
+          {{- end }}
+          volumeMounts:
+          - name: data
+            mountPath: /var/www/shaarli/data
+          - name: scripts
+            mountPath: /opt/scripts
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args:
-{{ toYaml .Values.args | indent 12 }}
           ports:
             - name: http
               containerPort: 80
@@ -41,17 +56,16 @@ spec:
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
-          - name: ca
-            mountPath: /usr/local/share/ca-certificates
           - name: data
             mountPath: /var/www/shaarli/data
+          {{- with .Values.populate.material }}
+          {{- if .enabled }}
+          - name: data
+            mountPath: /var/www/shaarli/tpl/material
+            subPath: {{ printf .source.dir .version }}
+          {{- end }}
+          {{- end }}
       volumes:
-      - name: ca
-        {{- if .Values.ca }}
-{{ toYaml .Values.ca | indent 8 }}
-        {{- else }}
-        emptyDir: {}
-        {{- end }}
       - name: data
       {{- if .Values.persistence.enabled }}
         persistentVolumeClaim:
@@ -59,6 +73,16 @@ spec:
       {{- else }}
         emptyDir: {}
       {{- end }}
+      - name: scripts
+        configMap:
+          name: {{ template "shaarli.fullname" . }}
+          items:
+          {{- with .Values.populate.material }}
+          - key: material.sh
+            path: material.sh
+          {{- end }}
+          - key: populate.sh
+            path: populate.sh
     {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}

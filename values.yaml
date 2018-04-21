@@ -1,11 +1,22 @@
 replicaCount: 1
 
+populate:
+  image:
+    repository: alpine
+    tag: latest
+    pullPolicy: IfNotPresent
+  material:
+    enabled: false
+    version: 0.9.5
+    source:
+      url: https://github.com/kalvn/Shaarli-Material/archive/v%s.tar.gz
+      file: Shaarli-Material-%s.tar.gz
+      dir: Shaarli-Material-%s/material
+
 image:
   repository: shaarli/shaarli
-  tag: stable
+  tag: latest
   pullPolicy: IfNotPresent
-
-args: [ sh, -c, 'update-ca-certificates && /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf' ]
 
 service:
   type: ClusterIP
@@ -23,13 +34,6 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-ca:
-  # configMap: {}
-  #   name: shaarli-ca
-  #   items:
-  #   - key: ca.crt
-  #     path: ca.crt
 
 ## Enable persistence using Persistent Volume Claims
 ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/

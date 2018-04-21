@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "shaarli.fullname" . }}
+  labels:
+    app: {{ template "shaarli.name" . }}
+    chart: {{ template "shaarli.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  {{ with .Values.populate.material }}
+  material.sh: |
+    #!/bin/sh
+    
+    set -xeo pipefail
+
+    URL="{{ printf .source.url .version }}"
+    FILE="{{ printf .source.file .version }}"
+    DIR="{{ printf .source.dir .version }}"
+
+    if [ ! -e "${FILE}" ]
+    then
+        apk --no-cache add curl
+        curl -LSo "${FILE}.part" "${URL}"
+        mv -v "${FILE}.part" "${FILE}"
+    fi
+
+    if [ ! -e "${DIR}" ]
+    then
+        tar -xvzf "${FILE}" "${DIR}"
+    fi
+  {{ end }}
+  populate.sh: |
+    #!/bin/sh
+    
+    set -xeo pipefail
+
+    DIR="/var/www/shaarli/data"
+    LOG="/var/www/shaarli/data/populate.log"
+    
+    date > "${LOG}"
+
+    for SCRIPT_FILE in "${@}"
+    do
+        echo "execute ${SCRIPT_FILE}" >> "${LOG}"
+        (cd "${DIR}" && sh "${SCRIPT_FILE}") 2>&1 >> "${LOG}"
+        echo "done ${SCRIPT_FILE}" >> "${LOG}"
+    done
